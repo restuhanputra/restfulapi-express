@@ -2,6 +2,9 @@ const { User } = require('../models');
 const Validator = require('fastest-validator');
 const v = new Validator();
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // create user (signup)
 const signup = (req, res, next) => {
@@ -232,11 +235,22 @@ const signin = (req, res, next) => {
           // check password
           bcrypt.compare(password, user.password, function (err, result) {
             if (result) {
-              res.status(200).json({
-                status: 200,
-                message: 'Success login',
-                data: user,
-              });
+              // jwt
+              const token = jwt.sign(
+                {
+                  email: user.email,
+                  username: user.username,
+                  userId: user.id,
+                },
+                JWT_SECRET,
+                function (err, token) {
+                  res.status(200).json({
+                    status: 200,
+                    message: 'Success login',
+                    token: token,
+                  });
+                }
+              );
             } else {
               res.status(401).json({
                 status: 401,
