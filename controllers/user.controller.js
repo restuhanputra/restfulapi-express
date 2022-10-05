@@ -1,74 +1,81 @@
 const { User } = require('../models');
 const Validator = require('fastest-validator');
 const v = new Validator();
+const bcrypt = require('bcrypt');
 
 // create user (signup)
 const signup = (req, res, next) => {
-  const data = {
-    username: req.body.username,
-    password: req.body.password,
-    email: req.body.email,
-    fullname: req.body.fullname,
-    picture: req.body.picture,
-    bio: req.body.bio,
-    creatAt: new Date(),
-    updatedAt: new Date(),
-    createdBy: 0,
-    updatedBy: 0,
-    isDeleted: false,
-  };
+  const saltRounds = 10;
 
-  // validation schema
-  const schema = {
-    username: { type: 'string', min: 5, max: 50, optional: false },
-    email: { type: 'email', optional: false },
-    password: { type: 'string', min: 5, max: 50, optional: false },
-  };
+  bcrypt.genSalt(saltRounds, function (err, salt) {
+    bcrypt.hash(req.body.password, salt, function (err, hash) {
+      const data = {
+        username: req.body.username,
+        password: hash,
+        email: req.body.email,
+        fullname: req.body.fullname,
+        picture: req.body.picture,
+        bio: req.body.bio,
+        creatAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: 0,
+        updatedBy: 0,
+        isDeleted: false,
+      };
 
-  // cek email
-  User.findOne({ where: { email: req.body.email } })
-    .then((user) => {
-      if (user) {
-        // email available
-        res.status(400).json({
-          status: 400,
-          message: 'Email already exist',
-        });
-      } else {
-        // validation data
-        const validationResult = v.validate(data, schema);
+      // validation schema
+      const schema = {
+        username: { type: 'string', min: 5, max: 50, optional: false },
+        email: { type: 'email', optional: false },
+        password: { type: 'string', min: 5, max: 255, optional: false },
+      };
 
-        if (validationResult !== true) {
-          // Data validation failed
-          res.status(400).json({
-            status: 400,
-            message: 'Validation failed',
-            data: validationResult,
-          });
-        } else {
-          // Email not available & Data validation success
-          // create user
-          User.create(data).then((result) => {
-            res
-              .status(200)
-              .json({
-                message: 'User created successfully',
-                data: result,
-              })
-              .catch((err) => {
-                res.status(500).json({
-                  message: err.message || 'Registration failed',
-                });
+      // cek email
+      User.findOne({ where: { email: req.body.email } })
+        .then((user) => {
+          if (user) {
+            // email available
+            res.status(400).json({
+              status: 400,
+              message: 'Email already exist',
+            });
+          } else {
+            // validation data
+            const validationResult = v.validate(data, schema);
+
+            if (validationResult !== true) {
+              // Data validation failed
+              res.status(400).json({
+                status: 400,
+                message: 'Validation failed',
+                data: validationResult,
               });
+            } else {
+              // Email not available & Data validation success
+              // create user
+              User.create(data).then((result) => {
+                res
+                  .status(200)
+                  .json({
+                    message: 'User created successfully',
+                    data: result,
+                  })
+                  .catch((err) => {
+                    res.status(500).json({
+                      message: err.message || 'Registration failed',
+                    });
+                  });
+              });
+            }
+          }
+        })
+        .catch((err) => {
+          res.status(500).json({
+            message: 'Something wrong',
           });
-        }
-      }
-    })
-    .catch((err) => {
-      res.status(500).json({
-        message: 'Something wrong',
-      });
+        });
     });
+  });
 };
 
 // read user
@@ -222,19 +229,22 @@ const signin = (req, res, next) => {
     .then((user) => {
       if (user) {
         if (user.isDeleted == false) {
-          if (user.password == password) {
-            res.status(200).json({
-              status: 200,
-              message: 'Success login',
-              data: user,
-            });
-          } else {
-            res.status(401).json({
-              status: 401,
-              message: 'Wrong password',
-              data: user,
-            });
-          }
+          // check password
+          bcrypt.compare(password, user.password, function (err, result) {
+            if (result) {
+              res.status(200).json({
+                status: 200,
+                message: 'Success login',
+                data: user,
+              });
+            } else {
+              res.status(401).json({
+                status: 401,
+                message: 'Wrong password',
+                data: user,
+              });
+            }
+          });
         } else {
           res.status(401).json({
             status: 401,
