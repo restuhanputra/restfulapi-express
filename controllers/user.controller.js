@@ -1,4 +1,6 @@
 const { User } = require('../models');
+const Validator = require('fastest-validator');
+const v = new Validator();
 
 // create user (signup)
 const signup = (req, res, next) => {
@@ -16,19 +18,57 @@ const signup = (req, res, next) => {
     isDeleted: false,
   };
 
-  User.create(data).then((result) => {
-    res
-      .status(200)
-      .json({
-        message: 'User created successfully',
-        data: result,
-      })
-      .catch((err) => {
-        res.status(500).json({
-          message: err.message || 'Some error occured while creating the user',
+  // validation schema
+  const schema = {
+    username: { type: 'string', min: 5, max: 50, optional: false },
+    email: { type: 'email', optional: false },
+    password: { type: 'string', min: 5, max: 50, optional: false },
+  };
+
+  // cek email
+  User.findOne({ where: { email: req.body.email } })
+    .then((user) => {
+      if (user) {
+        // email available
+        res.status(400).json({
+          status: 400,
+          message: 'Email already exist',
         });
+      } else {
+        // validation data
+        const validationResult = v.validate(data, schema);
+
+        if (validationResult !== true) {
+          // Data validation failed
+          res.status(400).json({
+            status: 400,
+            message: 'Validation failed',
+            data: validationResult,
+          });
+        } else {
+          // Email not available & Data validation success
+          // create user
+          User.create(data).then((result) => {
+            res
+              .status(200)
+              .json({
+                message: 'User created successfully',
+                data: result,
+              })
+              .catch((err) => {
+                res.status(500).json({
+                  message: err.message || 'Registration failed',
+                });
+              });
+          });
+        }
+      }
+    })
+    .catch((err) => {
+      res.status(500).json({
+        message: 'Something wrong',
       });
-  });
+    });
 };
 
 // read user
@@ -92,21 +132,42 @@ const update = (req, res, next) => {
 
   const id = req.params.id;
 
-  User.update(data, { where: { id } }).then((result) => {
-    res
-      .status(200)
-      .json({
-        status: 200,
-        message: 'Success update user data',
-        data: result,
-      })
-      .catch((err) => {
-        res.status(500).json({
-          status: 500,
-          message: err.message || 'Some error occured while updating the user',
+  // validation schema
+  const schema = {
+    username: { type: 'string', min: 5, max: 50, optional: false },
+    email: { type: 'email', optional: false },
+    password: { type: 'string', min: 5, max: 50, optional: false },
+  };
+
+  // validation data
+  const validationResult = v.validate(data, schema);
+
+  if (validationResult !== true) {
+    // Data validation failed
+    res.status(400).json({
+      status: 400,
+      message: 'Validation failed',
+      data: validationResult,
+    });
+  } else {
+    // Data validation success & update user
+    User.update(data, { where: { id } }).then((result) => {
+      res
+        .status(200)
+        .json({
+          status: 200,
+          message: 'Success update user data',
+          data: result,
+        })
+        .catch((err) => {
+          res.status(500).json({
+            status: 500,
+            message:
+              err.message || 'Some error occured while updating the user',
+          });
         });
-      });
-  });
+    });
+  }
 };
 
 // delete user by ID
