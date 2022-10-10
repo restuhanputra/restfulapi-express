@@ -241,6 +241,7 @@ const signin = (req, res, next) => {
                   email: user.email,
                   username: user.username,
                   userId: user.id,
+                  exp: Math.floor(Date.now() / 1000) + 60 * 60, //expired in 1 hour
                 },
                 JWT_SECRET,
                 function (err, token) {
@@ -255,7 +256,6 @@ const signin = (req, res, next) => {
               res.status(401).json({
                 status: 401,
                 message: 'Wrong password',
-                data: user,
               });
             }
           });
@@ -263,14 +263,12 @@ const signin = (req, res, next) => {
           res.status(401).json({
             status: 401,
             message: 'User has been deleted',
-            data: user,
           });
         }
       } else {
         res.status(401).json({
           status: 401,
           message: 'Email not found',
-          data: user,
         });
       }
     })
