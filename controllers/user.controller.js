@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const JWT_SECRET = process.env.JWT_SECRET;
+const { response } = require('../utils/helper.utils');
 
 // create user (signup)
 const signup = (req, res, next) => {
@@ -34,48 +35,51 @@ const signup = (req, res, next) => {
       };
 
       // cek email
-      User.findOne({ where: { email: req.body.email } })
+      User.findOne({ where: { email: req.body } })
         .then((user) => {
           if (user) {
             // email available
-            res.status(400).json({
-              status: 400,
-              message: 'Email already exist',
-            });
+            // res.status(400).json({
+            //   status: 400,
+            //   message: 'Email already exist',
+            // });
+
+            return response(res, 400, false, null, 'Email already exist');
           } else {
             // validation data
             const validationResult = v.validate(data, schema);
 
             if (validationResult !== true) {
-              // Data validation failed
-              res.status(400).json({
-                status: 400,
-                message: 'Validation failed',
-                data: validationResult,
-              });
+              return response(
+                res,
+                400,
+                null,
+                false,
+                validationResult,
+                'Validation failed'
+              );
             } else {
               // Email not available & Data validation success
               // create user
-              User.create(data).then((result) => {
-                res
-                  .status(200)
-                  .json({
-                    message: 'User created successfully',
-                    data: result,
-                  })
-                  .catch((err) => {
-                    res.status(500).json({
-                      message: err.message || 'Registration failed',
-                    });
-                  });
-              });
+              User.create(data)
+                .then((result) => {
+                  response(res, 200, result, null, 'User created successfully');
+                })
+                .catch((err) => {
+                  response(
+                    res,
+                    500,
+                    null,
+                    false,
+                    null,
+                    'Internal server error'
+                  );
+                });
             }
           }
         })
         .catch((err) => {
-          res.status(500).json({
-            message: 'Something wrong',
-          });
+          response(res, 500, null, false, null, 'Internal server error');
         });
     });
   });
@@ -83,46 +87,32 @@ const signup = (req, res, next) => {
 
 // read user
 const read = (req, res, next) => {
-  /** show all data */
-  // User.findAll()
-  //   .then((users) => {
-  //     res.send(users);
-  //   })
-  //   .catch((err) => {
-  //     res.send(err);
-  //   });
-
   /** show all data except isDelete is true */
   User.findAll({
     where: { isDeleted: false },
   })
     .then((users) => {
-      res.send(users);
+      response(res, 200, users, true, null, null);
     })
     .catch((err) => {
-      res.send(err);
+      response(res, 500, null, false, null, 'Internal server error');
     });
 };
 
 // read by ID
 const readById = (req, res, next) => {
-  // User.findAll({
-  //   where: { id: req.params.id },
-  // })
-  //   .then((users) => {
-  //     res.send(users);
-  //   })
-  //   .catch((err) => {
-  //     res.send(err);
-  //   });
-
   const id = req.params.id;
+
   User.findByPk(id)
     .then((users) => {
-      res.send(users);
+      if (users !== null) {
+        response(res, 200, users, true, null, null);
+      } else {
+        response(res, 404, null, false, null, 'The id does not exist');
+      }
     })
     .catch((err) => {
-      res.send(err);
+      response(res, 500, null, false, null, 'Internal server error');
     });
 };
 
@@ -154,29 +144,16 @@ const update = (req, res, next) => {
 
   if (validationResult !== true) {
     // Data validation failed
-    res.status(400).json({
-      status: 400,
-      message: 'Validation failed',
-      data: validationResult,
-    });
+    response(res, 400, null, false, validationResult, 'Validation failed');
   } else {
     // Data validation success & update user
-    User.update(data, { where: { id } }).then((result) => {
-      res
-        .status(200)
-        .json({
-          status: 200,
-          message: 'Success update user data',
-          data: result,
-        })
-        .catch((err) => {
-          res.status(500).json({
-            status: 500,
-            message:
-              err.message || 'Some error occured while updating the user',
-          });
-        });
-    });
+    User.update(data, { where: { id } })
+      .then((result) => {
+        response(res, 200, result, true, null, 'Success update user data');
+      })
+      .catch((err) => {
+        response(res, 500, null, false, null, 'Internal server error');
+      });
   }
 };
 
@@ -187,17 +164,10 @@ const destroy = (req, res, next) => {
   /** hard delete */
   // User.destroy({ where: { id } })
   //   .then((result) => {
-  //     res.status(200).json({
-  //       status: 200,
-  //       message: 'Success delete user data',
-  //       data: result,
-  //     });
+  //     response(res, 200, result, true, null, 'Success delete user data');
   //   })
   //   .catch((err) => {
-  //     res.status(500).json({
-  //       status: 500,
-  //       message: err.message || 'Some error occured while deleting the user',
-  //     });
+  //     response(res, 500, null, false, null, 'Internal server error');
   //   });
 
   /** soft delete */
@@ -209,17 +179,10 @@ const destroy = (req, res, next) => {
 
   User.update(data, { where: { id: id } })
     .then((result) => {
-      res.status(200).json({
-        status: 200,
-        message: 'Success delete user data',
-        data: result,
-      });
+      response(res, 200, result, true, null, 'Success delete user data');
     })
     .catch((err) => {
-      res.status(500).json({
-        status: 500,
-        message: err.message || 'Some error occured while deleting the user',
-      });
+      response(res, 500, null, false, null, 'Internal server error');
     });
 };
 
@@ -245,38 +208,25 @@ const signin = (req, res, next) => {
                 },
                 JWT_SECRET,
                 function (err, token) {
-                  res.status(200).json({
-                    status: 200,
-                    message: 'Success login',
+                  let data = {
                     token: token,
-                  });
+                  };
+                  response(res, 200, data, true, null, 'Success login');
                 }
               );
             } else {
-              res.status(401).json({
-                status: 401,
-                message: 'Wrong password',
-              });
+              response(res, 401, null, false, null, 'Wrong password');
             }
           });
         } else {
-          res.status(401).json({
-            status: 401,
-            message: 'User has been deleted',
-          });
+          response(res, 401, null, false, null, 'User has been deleted');
         }
       } else {
-        res.status(401).json({
-          status: 401,
-          message: 'Email not found',
-        });
+        response(res, 401, null, false, null, 'Email not found');
       }
     })
     .catch((err) => {
-      res.status(500).json({
-        status: 500,
-        message: err.message || 'Some error occured while login',
-      });
+      response(res, 500, null, false, null, 'Internal server error');
     });
 };
 
