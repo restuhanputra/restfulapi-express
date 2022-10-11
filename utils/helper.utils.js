@@ -1,6 +1,6 @@
 /**
  *
- * @param {int} res
+ * @param {*} res
  * @param {int} status
  * @param {*} data
  * @param {boolean} success
