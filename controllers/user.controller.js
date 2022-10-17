@@ -103,6 +103,9 @@ const read = (req, res, next) => {
 const readById = (req, res, next) => {
   const id = req.params.id;
 
+  if (isNaN(id))
+    response(res, 400, null, false, null, 'The id must be a number');
+
   User.findByPk(id)
     .then((users) => {
       if (users !== null) {
@@ -132,6 +135,9 @@ const update = (req, res, next) => {
 
   const id = req.params.id;
 
+  if (isNaN(id))
+    response(res, 400, null, false, null, 'The id must be a number');
+
   // validation schema
   const schema = {
     username: { type: 'string', min: 5, max: 50, optional: false },
@@ -160,6 +166,8 @@ const update = (req, res, next) => {
 // delete user by ID
 const destroy = (req, res, next) => {
   const id = req.params.id;
+  if (isNaN(id))
+    response(res, 400, null, false, null, 'The id must be a number');
 
   /** hard delete */
   // User.destroy({ where: { id } })
